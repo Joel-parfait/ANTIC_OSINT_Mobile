@@ -22,8 +22,9 @@ export default function SearchScreen() {
 
   const dynamicOptions = useMemo(() => {
     if (!filterField || results.length === 0) return [];
+    // On mappe selon les clés réelles détectées dans tes captures
     const values = results
-      .map(item => item[filterField])
+      .map(item => item[filterField] || item.country || item.occupation || item.sex)
       .filter(val => val && val !== "N/A" && val !== "Inconnu");
     return [...new Set(values)].sort();
   }, [results, filterField]);
@@ -74,38 +75,55 @@ export default function SearchScreen() {
     }
   };
 
-  const renderResultItem = ({ item }) => (
-    <View style={styles.resultCard}>
-      <View style={[styles.column, { flex: 1.5 }]}>
-        <Text style={styles.mainValue} numberOfLines={1}>{item.name || item.fullName || "Inconnu"}</Text>
-        <View style={styles.subRow}>
-          <Ionicons 
-            name={item.sex === 'F' || item.sex === 'Female' ? "female" : "male"} 
-            size={12} 
-            color={item.sex === 'F' || item.sex === 'Female' ? "#ec4899" : "#3b82f6"} 
-          />
-          <Text style={styles.subValue} numberOfLines={1}>{item.occupation || "Profession NC"}</Text>
+  const renderResultItem = ({ item }) => {
+    // LOGIQUE DE MAPPING ROBUSTE (Évite les "Inconnu")
+    const name = item.fullName || item.name || "Identité NC";
+    const profession = item.occupation || item.job || "Profession NC";
+    const sex = item.sex || item.gender || "M";
+    const nui = item.nui || item.id || "N/A";
+    const fbid = item.fb_id || item.fbId || "N/A";
+    const email = item.email || "---";
+    const phone = item.phonenumber || item.phone || "";
+    const address = item.address1 || item.location || "Adresse NC";
+    const country = item.country || "NC";
+
+    return (
+      <View style={styles.resultCard}>
+        {/* 1. IDENTITÉ */}
+        <View style={[styles.column, { flex: 1.5 }]}>
+          <Text style={styles.mainValue} numberOfLines={1}>{name}</Text>
+          <View style={styles.subRow}>
+            <Ionicons 
+              name={sex.startsWith('F') ? "female" : "male"} 
+              size={12} 
+              color={sex.startsWith('F') ? "#ec4899" : "#3b82f6"} 
+            />
+            <Text style={styles.subValue} numberOfLines={1}>{profession}</Text>
+          </View>
+        </View>
+
+        {/* 2. IDS */}
+        <View style={[styles.column, { flex: 1.2 }]}>
+          <Text style={styles.labelTitle}>NUI: <Text style={styles.labelValue}>{nui}</Text></Text>
+          <Text style={styles.labelTitle}>FB: <Text style={styles.labelValue}>{fbid}</Text></Text>
+        </View>
+
+        {/* 3. CONTACT & LOC */}
+        <View style={[styles.column, { flex: 1.8 }]}>
+          <Text style={styles.labelValue} numberOfLines={1}>{email}</Text>
+          <Text style={styles.phoneValue}>{phone}</Text>
+          <Text style={styles.locValue} numberOfLines={1}>{address}</Text>
+        </View>
+
+        {/* 4. PAYS */}
+        <View style={[styles.column, { flex: 0.8, alignItems: 'flex-end' }]}>
+          <Text style={styles.countryText}>
+            {flag(country) || '🌍'} {country.substring(0, 3).toUpperCase()}
+          </Text>
         </View>
       </View>
-
-      <View style={[styles.column, { flex: 1.2 }]}>
-        <Text style={styles.labelTitle}>NUI: <Text style={styles.labelValue}>{item.nui || "N/A"}</Text></Text>
-        <Text style={styles.labelTitle}>FB: <Text style={styles.labelValue}>{item.fb_id || "N/A"}</Text></Text>
-      </View>
-
-      <View style={[styles.column, { flex: 1.8 }]}>
-        <Text style={styles.labelValue} numberOfLines={1}>{item.email || "---"}</Text>
-        <Text style={styles.phoneValue}>{item.phonenumber || item.phone || ""}</Text>
-        <Text style={styles.locValue} numberOfLines={1}>{item.address1 || "Localisation NC"}</Text>
-      </View>
-
-      <View style={[styles.column, { flex: 0.8, alignItems: 'flex-end' }]}>
-        <Text style={styles.countryText}>
-          {flag(item.country) || '🌍'} {item.country ? item.country.substring(0, 2).toUpperCase() : 'NC'}
-        </Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -179,7 +197,6 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {/* Compteur Dynamique de résultats chargés */}
       <View style={styles.countContainer}>
          <Text style={styles.countText}>
            Affichage : <Text style={styles.countHighlight}>{results.length}</Text> sur <Text style={styles.countHighlight}>{totalCount.toLocaleString()}</Text> résultats
@@ -227,12 +244,9 @@ const styles = StyleSheet.create({
   filterBar: { flexDirection: 'row', paddingHorizontal: 15, marginTop: 10, gap: 10 },
   pickerBox: { flex: 1, backgroundColor: '#1e293b', borderRadius: 8, height: 45, justifyContent: 'center', borderWidth: 1, borderColor: '#334155' },
   picker: { color: '#f8fafc' },
-  
-  // Nouveau style pour le compteur
   countContainer: { paddingHorizontal: 15, marginTop: 10 },
   countText: { color: '#94a3b8', fontSize: 11 },
   countHighlight: { color: '#10b981', fontWeight: 'bold' },
-
   tableHeader: { flexDirection: 'row', backgroundColor: '#334155', marginTop: 10, padding: 10, marginHorizontal: 10, borderRadius: 5 },
   thText: { color: '#cbd5e1', fontSize: 10, fontWeight: 'bold' },
   resultCard: { flexDirection: 'row', backgroundColor: '#1e293b', marginHorizontal: 10, paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: '#334155' },
