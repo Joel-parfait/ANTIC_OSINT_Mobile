@@ -3,10 +3,12 @@ import {
   StyleSheet, View, TextInput, TouchableOpacity, Text, FlatList, Platform, Keyboard 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext'; // IMPORT DU HOOK GLOBAL
 
 const API = "https://osint-dashboard-backend.onrender.com";
 
 export default function SearchBar({ onSearch, onReset, onSuggestState }) {
+  const { theme } = useTheme(); // RECUPERATION DU THEME
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -14,7 +16,6 @@ export default function SearchBar({ onSearch, onReset, onSuggestState }) {
   // --- LOGIQUE AUTOCOMPLÉTION (Identique Dashboard.js) ---
   useEffect(() => {
     const timer = setTimeout(() => {
-      // On déclenche à partir de 1 caractère comme sur ton Web
       if (input.trim().length >= 1) {
         fetch(`${API}/search/suggest?value=${encodeURIComponent(input.trim())}`)
           .then(res => {
@@ -22,11 +23,10 @@ export default function SearchBar({ onSearch, onReset, onSuggestState }) {
             return res.json();
           })
           .then(data => {
-            // Ton API renvoie un tableau de strings ["Nom1", "Nom2"]
             setSuggestions(data || []);
             const hasData = data && data.length > 0;
             setShowSuggestions(hasData);
-            onSuggestState(hasData); // Verrouille les filtres si suggestions
+            onSuggestState(hasData);
           })
           .catch(err => console.error("Erreur suggestions:", err));
       } else {
@@ -34,7 +34,7 @@ export default function SearchBar({ onSearch, onReset, onSuggestState }) {
         setShowSuggestions(false);
         onSuggestState(false);
       }
-    }, 300); // Le Debounce de 300ms pour Render
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [input]);
@@ -45,7 +45,7 @@ export default function SearchBar({ onSearch, onReset, onSuggestState }) {
     setShowSuggestions(false);
     onSuggestState(false);
     onSearch(val);
-    Keyboard.dismiss(); // Ferme le clavier sur mobile
+    Keyboard.dismiss();
   };
 
   const handleClear = () => {
@@ -66,12 +66,24 @@ export default function SearchBar({ onSearch, onReset, onSuggestState }) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.searchBox}>
-        <View style={styles.inputContainer}>
-          <Ionicons name="search" size={18} color="#666" style={{ marginLeft: 12 }} />
+        {/* DESIGN RENDU RESPONSIVE ET INTERIEUR FLUIDE SELON LE THEME */}
+        <View style={[
+          styles.inputContainer, 
+          { 
+            backgroundColor: theme.isDark ? '#1e293b' : '#f1f5f9', 
+            borderColor: theme.isDark ? '#334155' : '#cbd5e1' 
+          }
+        ]}>
+          <Ionicons 
+            name="search" 
+            size={18} 
+            color={theme.isDark ? '#666' : '#94a3b8'} 
+            style={{ marginLeft: 12 }} 
+          />
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { color: theme.textMain }]}
             placeholder="Nom, matricule, téléphone..."
-            placeholderTextColor="#4b5563"
+            placeholderTextColor={theme.isDark ? '#4b5563' : '#94a3b8'}
             value={input}
             onChangeText={setInput}
             onFocus={() => input.length >= 1 && setShowSuggestions(true)}
@@ -80,29 +92,36 @@ export default function SearchBar({ onSearch, onReset, onSuggestState }) {
           />
           {input.length > 0 && (
             <TouchableOpacity onPress={handleClear} style={styles.clearIcon}>
-              <Ionicons name="close-circle" size={18} color="#4b5563" />
+              <Ionicons 
+                name="close-circle" 
+                size={18} 
+                color={theme.isDark ? '#4b5563' : '#94a3b8'} 
+              />
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity style={styles.btnSearch} onPress={handleSubmit}>
+        <TouchableOpacity style={[styles.btnSearch, { backgroundColor: theme.tabActive }]} onPress={handleSubmit}>
           <Text style={styles.btnText}>GO</Text>
         </TouchableOpacity>
       </View>
 
-      {/* LISTE FLOTTANTE (Z-INDEX ÉLEVÉ) */}
+      {/* BOX DES SUGGESTIONS DYNAMIQUE ET DESIGN NET COULEUR CLAIRE/SOMBRE */}
       {showSuggestions && suggestions.length > 0 && (
-        <View style={styles.suggestionsBox}>
+        <View style={[
+          styles.suggestionsBox, 
+          { backgroundColor: theme.card, borderColor: theme.border }
+        ]}>
           <FlatList
             data={suggestions}
             keyExtractor={(item, index) => index.toString()}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity 
-                style={styles.suggestionItem} 
+                style={[styles.suggestionItem, { borderBottomColor: theme.isDark ? '#0f172a' : '#f1f5f9' }]} 
                 onPress={() => handleSelectSuggestion(item)}
               >
-                <Ionicons name="time-outline" size={16} color="#4b5563" />
-                <Text style={styles.suggestionText}>{item}</Text>
+                <Ionicons name="time-outline" size={16} color={theme.textSub} />
+                <Text style={[styles.suggestionText, { color: theme.textMain }]}>{item}</Text>
               </TouchableOpacity>
             )}
             style={{ maxHeight: 250 }}
@@ -115,7 +134,7 @@ export default function SearchBar({ onSearch, onReset, onSuggestState }) {
 
 const styles = StyleSheet.create({
   wrapper: { 
-    zIndex: 5000, // Priorité maximale
+    zIndex: 5000, 
     position: 'relative', 
     width: '100%' 
   },
@@ -129,15 +148,12 @@ const styles = StyleSheet.create({
     flex: 1, 
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: '#1e293b', 
     borderRadius: 10, 
     height: 48,
-    borderWidth: 1,
-    borderColor: '#334155'
+    borderWidth: 1
   },
   textInput: { 
     flex: 1, 
-    color: '#f8fafc', 
     paddingHorizontal: 10, 
     fontSize: 14 
   },
@@ -146,7 +162,6 @@ const styles = StyleSheet.create({
     marginRight: 5 
   },
   btnSearch: { 
-    backgroundColor: '#3b82f6', 
     paddingHorizontal: 20, 
     borderRadius: 10, 
     justifyContent: 'center',
@@ -162,26 +177,22 @@ const styles = StyleSheet.create({
     top: 55, 
     left: 15, 
     right: 75, 
-    backgroundColor: '#1e293b', 
     borderRadius: 10, 
     borderWidth: 1, 
-    borderColor: '#334155',
-    elevation: 10, // Pour Android
-    zIndex: 9999, // Pour iOS
+    elevation: 10, 
+    zIndex: 9999, 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
   },
   suggestionItem: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     padding: 15, 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#0f172a' 
+    borderBottomWidth: 1 
   },
   suggestionText: { 
-    color: '#cbd5e1', 
     marginLeft: 12, 
     fontSize: 14 
   }

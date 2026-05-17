@@ -156,7 +156,7 @@ export default function SearchScreen() {
           <Image source={require('../../assets/logo.png')} style={styles.miniLogo} />
           <View style={styles.headerTextContainer}>
             <Text style={[styles.headerTitle, { color: theme.textMain }]}>ANTIC OSINT Tool</Text>
-            <Text style={styles.headerSub}>{totalCount.toLocaleString()} cibles identifiées</Text>
+            <Text style={[styles.headerSub, { color: theme.isDark ? '#10b981' : '#059669' }]}>{totalCount.toLocaleString()} cibles identifiées</Text>
           </View>
           <TouchableOpacity onPress={handleReset} style={styles.resetIcon}>
             <Ionicons name="refresh-circle" size={32} color="#ef4444" />
@@ -187,7 +187,7 @@ export default function SearchScreen() {
             </Picker>
           </View>
           <View style={[styles.pickerBox, { flex: 1.2, backgroundColor: theme.card, borderColor: theme.border }, isSuggesting && { opacity: 0.5 }]}>
-            <Picker selectedValue={filterValue} enabled={filterField !== "" && !isSuggesting} onValueChange={(val) => { setFilterValue(val); if (val) fetchResults(query, 0, false, filterField, val); }} style={{ color: theme.textMain }} dropdownIconColor={theme.textSub}>
+            <Picker selectedValue={filterValue} enabled={filterField !== ""} onValueChange={(val) => { setFilterValue(val); if (val) fetchResults(query, 0, false, filterField, val); }} style={{ color: theme.textMain }} dropdownIconColor={theme.textSub}>
               <Picker.Item label={filterField ? "Choisir une tendance..." : "---"} value="" color="#666" />
               {dynamicOptions.map((opt, index) => <Picker.Item key={index} label={opt} value={opt} color={theme.textMain} />)}
             </Picker>
@@ -195,18 +195,18 @@ export default function SearchScreen() {
         </View>
 
         <View style={styles.countContainer}>
-           <Text style={[styles.countText, { color: theme.textSub }]}>Affichage : <Text style={styles.countHighlight}>{results.length}</Text> / <Text style={styles.countHighlight}>{totalCount.toLocaleString()}</Text> résultats</Text>
+           <Text style={[styles.countText, { color: theme.textSub }]}>Affichage : <Text style={[styles.countHighlight, { color: theme.isDark ? '#10b981' : '#059669' }]}>{results.length}</Text> / <Text style={[styles.countHighlight, { color: theme.isDark ? '#10b981' : '#059669' }]}>{totalCount.toLocaleString()}</Text> résultats</Text>
         </View>
 
-        <View style={[styles.tableHeader, { backgroundColor: theme.isDark ? '#334155' : '#cbd5e1' }]}>
-          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#334155', flex: 1.5 }]}>IDENTITÉ</Text>
-          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#334155', flex: 1.2 }]}>IDS</Text>
-          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#334155', flex: 1.8 }]}>CONTACT</Text>
-          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#334155', flex: 0.8, textAlign: 'right' }]}>PAYS</Text>
+        <View style={[styles.tableHeader, { backgroundColor: theme.isDark ? '#334155' : '#e2e8f0' }]}>
+          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#4b5563', flex: 1.5 }]}>IDENTITÉ</Text>
+          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#4b5563', flex: 1.2 }]}>IDS</Text>
+          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#4b5563', flex: 1.8 }]}>CONTACT</Text>
+          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#4b5563', flex: 0.8, textAlign: 'right' }]}>PAYS</Text>
         </View>
 
         {loading ? (
-          <ActivityIndicator color="#10b981" size="large" style={{marginTop: 50}} />
+          <ActivityIndicator color={theme.isDark ? '#10b981' : '#059669'} size="large" style={{marginTop: 50}} />
         ) : (
           <FlatList
             data={results}
@@ -214,7 +214,7 @@ export default function SearchScreen() {
             renderItem={renderResultItem}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}
-            ListFooterComponent={loadingMore ? <ActivityIndicator color="#10b981" size="large" style={{marginVertical: 20}} /> : null}
+            ListFooterComponent={loadingMore ? <ActivityIndicator color={theme.isDark ? '#10b981' : '#059669'} size="large" style={{marginVertical: 20}} /> : null}
             contentContainerStyle={{ paddingBottom: 20 }}
           />
         )}
@@ -266,9 +266,9 @@ export default function SearchScreen() {
                   <InfoItem label="NUI (MATRICULE)" value={selectedPerson?.nui} theme={theme} />
                   <InfoItem label="FACEBOOK ID" value={selectedPerson?.facebookId} theme={theme} />
                   <InfoItem label="DATE DE CRÉATION RECORD" value={selectedPerson?.creationdatetime} theme={theme} />
-                  <View style={[styles.rawBox, { backgroundColor: theme.isDark ? '#020617' : '#f1f5f9' }]}>
+                  <View style={[styles.rawBox, { backgroundColor: theme.isDark ? '#020617' : '#f8fafc', borderColor: theme.isDark ? '#ef4444' : '#dc2626' }]}>
                     <Text style={styles.infoLabel}>RAW DATA (SOURCE)</Text>
-                    <Text style={styles.rawText}>{selectedPerson?.raw || "Aucune donnée brute"}</Text>
+                    <Text style={[styles.rawText, { color: theme.isDark ? '#ef4444' : '#b91c1c' }]}>{selectedPerson?.raw || "Aucune donnée brute"}</Text>
                   </View>
                 </InfoGroup>
               </ScrollView>
@@ -278,7 +278,7 @@ export default function SearchScreen() {
                   <Ionicons name="cloud-download-outline" size={20} color="white" />
                   <Text style={styles.btnExportText}>Générer Rapport (.JSON)</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.btnClose, { backgroundColor: theme.isDark ? '#334155' : '#e2e8f0' }]} onPress={() => setModalVisible(false)}>
+                <TouchableOpacity style={[styles.btnClose, { backgroundColor: theme.isDark ? '#334155' : '#f1f5f9' }]} onPress={() => setModalVisible(false)}>
                   <Text style={[styles.btnCloseText, { color: theme.textMain }]}>Fermer</Text>
                 </TouchableOpacity>
               </View>
@@ -299,8 +299,8 @@ const InfoGroup = ({ title, icon, color, children }) => (
 );
 
 const InfoItem = ({ label, value, flex, theme }) => (
-  <View style={[styles.infoBox, { backgroundColor: theme.bg }, flex ? { flex, marginRight: 5 } : {}]}>
-    <Text style={styles.infoLabel}>{label}</Text>
+  <View style={[styles.infoBox, { backgroundColor: theme.isDark ? '#0f172a' : '#f1f5f9' }, flex ? { flex, marginRight: 5 } : {}]}>
+    <Text style={[styles.infoLabel, { color: theme.isDark ? '#4b5563' : '#94a3b8' }]}> {label}</Text>
     <Text style={[styles.infoVal, { color: theme.textMain }]} numberOfLines={2}>{value || "Non renseigné"}</Text>
   </View>
 );
@@ -312,14 +312,14 @@ const styles = StyleSheet.create({
   miniLogo: { width: 42, height: 42, borderRadius: 21 },
   headerTextContainer: { marginLeft: 12, flex: 1 },
   headerTitle: { fontSize: 16, fontWeight: 'bold' },
-  headerSub: { color: '#10b981', fontSize: 11, fontWeight: '600' },
+  headerSub: { fontSize: 11, fontWeight: '600' },
   resetIcon: { padding: 5 },
   filterBar: { flexDirection: 'row', paddingHorizontal: 15, marginTop: 10, gap: 10 },
   pickerBox: { flex: 1, borderRadius: 8, height: 45, justifyContent: 'center', borderWidth: 1 },
   picker: { width: '100%' },
   countContainer: { paddingHorizontal: 15, marginTop: 10 },
   countText: { fontSize: 11 },
-  countHighlight: { color: '#10b981', fontWeight: 'bold' },
+  countHighlight: { fontWeight: 'bold' },
   tableHeader: { flexDirection: 'row', marginTop: 10, padding: 10, marginHorizontal: 10, borderRadius: 5 },
   thText: { fontSize: 10, fontWeight: 'bold' },
   resultCard: { flexDirection: 'row', marginHorizontal: 10, paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1 },
@@ -343,10 +343,10 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 11, fontWeight: 'bold', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
   infoRow: { flexDirection: 'row', marginBottom: 8 },
   infoBox: { padding: 12, borderRadius: 10, marginBottom: 8, flex: 1 },
-  infoLabel: { color: '#4b5563', fontSize: 8, fontWeight: 'bold', marginBottom: 4 },
+  infoLabel: { fontSize: 8, fontWeight: 'bold', marginBottom: 4 },
   infoVal: { fontSize: 13, fontWeight: '500' },
-  rawBox: { padding: 15, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: '#ef4444' },
-  rawText: { color: '#ef4444', fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+  rawBox: { padding: 15, borderRadius: 10, borderLeftWidth: 3 },
+  rawText: { fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
   modalFooter: { padding: 20, flexDirection: 'row', gap: 10 },
   btnExport: { flex: 2, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', height: 50 },
   btnExportText: { color: 'white', fontWeight: 'bold', marginLeft: 8 },
