@@ -9,13 +9,17 @@ import { flag } from 'country-emoji';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
-// IMPORT DU COMPOSANT SÉPARÉ
+// IMPORT DU COMPOSANT SÉPARÉ ET DU CONTEXTE GLOBAL
 import SearchBar from '../components/SearchBar';
+import { useTheme } from '../context/ThemeContext';
 
 const API = "https://osint-dashboard-backend.onrender.com";
 const { width, height } = Dimensions.get('window');
 
 export default function SearchScreen() {
+  // --- CONSOMMATION DU THÈME GLOBAL ---
+  const { theme } = useTheme();
+
   // --- ÉTATS DES DONNÉES ---
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,13 +31,12 @@ export default function SearchScreen() {
   const [currentPage, setCurrentPage] = useState(0);
   const [filterField, setFilterField] = useState("");
   const [filterValue, setFilterValue] = useState("");
-  const [isSuggesting, setIsSuggesting] = useState(false); // Verrouillage UI
+  const [isSuggesting, setIsSuggesting] = useState(false);
 
   // --- ÉTATS MODAL DÉTAILS ---
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // LOGIQUE DES TENDANCES (FILTRES DYNAMIQUES)
   const dynamicOptions = useMemo(() => {
     if (!filterField || results.length === 0) return [];
     const values = results
@@ -42,7 +45,6 @@ export default function SearchScreen() {
     return [...new Set(values)].sort();
   }, [results, filterField]);
 
-  // FONCTION DE RECHERCHE PRINCIPALE
   const fetchResults = async (searchValue, page = 0, shouldAppend = false, fField = filterField, fValue = filterValue) => {
     setQuery(searchValue);
     if (!searchValue && !fField) return;
@@ -96,7 +98,7 @@ export default function SearchScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
-          dialogTitle: 'Exporter le dossier cible',
+          dialogTitle: 'Exporter le dossier dossier',
           UTI: 'public.json'
         });
       }
@@ -112,48 +114,48 @@ export default function SearchScreen() {
 
     return (
       <TouchableOpacity 
-        style={styles.resultCard} 
+        style={[styles.resultCard, { backgroundColor: theme.card, borderBottomColor: theme.border }]} 
         onPress={() => { setSelectedPerson(item); setModalVisible(true); }}
       >
         <View style={[styles.column, { flex: 1.5 }]}>
-          <Text style={styles.mainValue} numberOfLines={1}>{name}</Text>
+          <Text style={[styles.mainValue, { color: theme.textMain }]} numberOfLines={1}>{name}</Text>
           <View style={styles.subRow}>
             <Ionicons 
               name={sex.startsWith('F') ? "female" : "male"} 
               size={12} 
               color={sex.startsWith('F') ? "#ec4899" : "#3b82f6"} 
             />
-            <Text style={styles.subValue} numberOfLines={1}>{item.occupation || "Profession NC"}</Text>
+            <Text style={[styles.subValue, { color: theme.textSub }]} numberOfLines={1}>{item.occupation || "Profession NC"}</Text>
           </View>
         </View>
 
         <View style={[styles.column, { flex: 1.2 }]}>
-          <Text style={styles.labelTitle}>NUI: <Text style={styles.labelValue}>{item.nui || "N/A"}</Text></Text>
-          <Text style={styles.labelTitle}>FB: <Text style={styles.labelValue}>{item.facebookId || item.fb_id || "N/A"}</Text></Text>
+          <Text style={styles.labelTitle}>NUI: <Text style={[styles.labelValue, { color: theme.textMain }]}>{item.nui || "N/A"}</Text></Text>
+          <Text style={styles.labelTitle}>FB: <Text style={[styles.labelValue, { color: theme.textMain }]}>{item.facebookId || item.fb_id || "N/A"}</Text></Text>
         </View>
 
         <View style={[styles.column, { flex: 1.8 }]}>
-          <Text style={styles.labelValue} numberOfLines={1}>{item.email || "---"}</Text>
+          <Text style={[styles.labelValue, { color: theme.textMain }]} numberOfLines={1}>{item.email || "---"}</Text>
           <Text style={styles.phoneValue}>{item.phonenumber || ""}</Text>
         </View>
 
         <View style={[styles.column, { flex: 0.8, alignItems: 'flex-end' }]}>
-          <Text style={styles.countryText}>{flag(country) || '🌍'} {country.substring(0, 3).toUpperCase()}</Text>
+          <Text style={[styles.countryText, { color: theme.textMain }]}>{flag(country) || '🌍'} {country.substring(0, 3).toUpperCase()}</Text>
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.barStyle} />
       <SafeAreaView style={styles.safeArea}>
         
         {/* HEADER */}
         <View style={styles.header}>
           <Image source={require('../../assets/logo.png')} style={styles.miniLogo} />
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>ANTIC OSINT Tool</Text>
+            <Text style={[styles.headerTitle, { color: theme.textMain }]}>ANTIC OSINT Tool</Text>
             <Text style={styles.headerSub}>{totalCount.toLocaleString()} cibles identifiées</Text>
           </View>
           <TouchableOpacity onPress={handleReset} style={styles.resetIcon}>
@@ -175,32 +177,32 @@ export default function SearchScreen() {
           style={styles.filterBar} 
           pointerEvents={isSuggesting ? 'none' : 'auto'}
         >
-          <View style={[styles.pickerBox, isSuggesting && { opacity: 0.5 }]}>
-            <Picker selectedValue={filterField} onValueChange={(val) => { setFilterField(val); setFilterValue(""); }} style={styles.picker} dropdownIconColor="#94a3b8">
+          <View style={[styles.pickerBox, { backgroundColor: theme.card, borderColor: theme.border }, isSuggesting && { opacity: 0.5 }]}>
+            <Picker selectedValue={filterField} onValueChange={(val) => { setFilterField(val); setFilterValue(""); }} style={{ color: theme.textMain }} dropdownIconColor={theme.textSub}>
               <Picker.Item label="Filtrer par..." value="" color="#666" />
-              <Picker.Item label="🌍 Pays" value="country" />
-              <Picker.Item label="💼 Profession" value="occupation" />
-              <Picker.Item label="📍 Adresse" value="address1" />
-              <Picker.Item label="👤 Sexe" value="sex" />
+              <Picker.Item label="🌍 Pays" value="country" color={theme.textMain} />
+              <Picker.Item label="💼 Profession" value="occupation" color={theme.textMain} />
+              <Picker.Item label="📍 Adresse" value="address1" color={theme.textMain} />
+              <Picker.Item label="👤 Sexe" value="sex" color={theme.textMain} />
             </Picker>
           </View>
-          <View style={[styles.pickerBox, { flex: 1.2 }, isSuggesting && { opacity: 0.5 }]}>
-            <Picker selectedValue={filterValue} enabled={filterField !== "" && !isSuggesting} onValueChange={(val) => { setFilterValue(val); if (val) fetchResults(query, 0, false, filterField, val); }} style={styles.picker} dropdownIconColor="#94a3b8">
+          <View style={[styles.pickerBox, { flex: 1.2, backgroundColor: theme.card, borderColor: theme.border }, isSuggesting && { opacity: 0.5 }]}>
+            <Picker selectedValue={filterValue} enabled={filterField !== "" && !isSuggesting} onValueChange={(val) => { setFilterValue(val); if (val) fetchResults(query, 0, false, filterField, val); }} style={{ color: theme.textMain }} dropdownIconColor={theme.textSub}>
               <Picker.Item label={filterField ? "Choisir une tendance..." : "---"} value="" color="#666" />
-              {dynamicOptions.map((opt, index) => <Picker.Item key={index} label={opt} value={opt} />)}
+              {dynamicOptions.map((opt, index) => <Picker.Item key={index} label={opt} value={opt} color={theme.textMain} />)}
             </Picker>
           </View>
         </View>
 
         <View style={styles.countContainer}>
-           <Text style={styles.countText}>Affichage : <Text style={styles.countHighlight}>{results.length}</Text> / <Text style={styles.countHighlight}>{totalCount.toLocaleString()}</Text> résultats</Text>
+           <Text style={[styles.countText, { color: theme.textSub }]}>Affichage : <Text style={styles.countHighlight}>{results.length}</Text> / <Text style={styles.countHighlight}>{totalCount.toLocaleString()}</Text> résultats</Text>
         </View>
 
-        <View style={styles.tableHeader}>
-          <Text style={[styles.thText, {flex: 1.5}]}>IDENTITÉ</Text>
-          <Text style={[styles.thText, {flex: 1.2}]}>IDS</Text>
-          <Text style={[styles.thText, {flex: 1.8}]}>CONTACT</Text>
-          <Text style={[styles.thText, {flex: 0.8, textAlign: 'right'}]}>PAYS</Text>
+        <View style={[styles.tableHeader, { backgroundColor: theme.isDark ? '#334155' : '#cbd5e1' }]}>
+          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#334155', flex: 1.5 }]}>IDENTITÉ</Text>
+          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#334155', flex: 1.2 }]}>IDS</Text>
+          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#334155', flex: 1.8 }]}>CONTACT</Text>
+          <Text style={[styles.thText, { color: theme.isDark ? '#cbd5e1' : '#334155', flex: 0.8, textAlign: 'right' }]}>PAYS</Text>
         </View>
 
         {loading ? (
@@ -220,8 +222,8 @@ export default function SearchScreen() {
         {/* MODAL RESPONSIVE COMPLÈTE */}
         <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <View style={[styles.modalHeader, { backgroundColor: '#3b82f6' }]}>
+            <View style={[styles.modalContainer, { backgroundColor: theme.card }]}>
+              <View style={[styles.modalHeader, { backgroundColor: theme.isDark ? '#3b82f6' : '#2563eb' }]}>
                 <View style={styles.avatarCircle}>
                   <Text style={styles.avatarText}>{selectedPerson?.name?.substring(0, 2).toUpperCase() || 'NC'}</Text>
                 </View>
@@ -235,49 +237,49 @@ export default function SearchScreen() {
               </View>
 
               <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                <InfoGroup title="Etat Civil & Identité" icon="person">
-                  <InfoItem label="NOM COMPLET" value={selectedPerson?.name} />
+                <InfoGroup title="Etat Civil & Identité" icon="person" color={theme.tabActive}>
+                  <InfoItem label="NOM COMPLET" value={selectedPerson?.name} theme={theme} />
                   <View style={styles.infoRow}>
-                    <InfoItem label="SEXE" value={selectedPerson?.sex} flex={1} />
-                    <InfoItem label="STATUT MATRIMONIAL" value={selectedPerson?.maritalstatus} flex={1} />
+                    <InfoItem label="SEXE" value={selectedPerson?.sex} flex={1} theme={theme} />
+                    <InfoItem label="STATUT MATRIMONIAL" value={selectedPerson?.maritalstatus} flex={1} theme={theme} />
                   </View>
                   <View style={styles.infoRow}>
-                    <InfoItem label="DATE DE NAISSANCE" value={selectedPerson?.dateOfBirth} flex={1} />
-                    <InfoItem label="LIEU DE NAISSANCE" value={selectedPerson?.placeofbirth} flex={1} />
+                    <InfoItem label="DATE DE NAISSANCE" value={selectedPerson?.dateOfBirth} flex={1} theme={theme} />
+                    <InfoItem label="LIEU DE NAISSANCE" value={selectedPerson?.placeofbirth} flex={1} theme={theme} />
                   </View>
                 </InfoGroup>
 
-                <InfoGroup title="Coordonnées & Localisation" icon="call">
-                  <InfoItem label="NUMÉRO DE TÉLÉPHONE" value={selectedPerson?.phonenumber} />
-                  <InfoItem label="ADRESSE EMAIL" value={selectedPerson?.email} />
-                  <InfoItem label="ADRESSE PRINCIPALE (1)" value={selectedPerson?.address1} />
-                  <InfoItem label="ADRESSE SECONDAIRE (2)" value={selectedPerson?.address2} />
-                  <InfoItem label="PAYS" value={`${flag(selectedPerson?.country) || '🌍'} ${selectedPerson?.country}`} />
+                <InfoGroup title="Coordonnées & Localisation" icon="call" color={theme.tabActive}>
+                  <InfoItem label="NUMÉRO DE TÉLÉPHONE" value={selectedPerson?.phonenumber} theme={theme} />
+                  <InfoItem label="ADRESSE EMAIL" value={selectedPerson?.email} theme={theme} />
+                  <InfoItem label="ADRESSE PRINCIPALE (1)" value={selectedPerson?.address1} theme={theme} />
+                  <InfoItem label="ADRESSE SECONDAIRE (2)" value={selectedPerson?.address2} theme={theme} />
+                  <InfoItem label="PAYS" value={`${flag(selectedPerson?.country) || '🌍'} ${selectedPerson?.country}`} theme={theme} />
                 </InfoGroup>
 
-                <InfoGroup title="Vie Professionnelle" icon="briefcase">
-                  <InfoItem label="PROFESSION / OCCUPATION" value={selectedPerson?.occupation} />
-                  <InfoItem label="LIEU DE TRAVAIL" value={selectedPerson?.placeofwork} />
+                <InfoGroup title="Vie Professionnelle" icon="briefcase" color={theme.tabActive}>
+                  <InfoItem label="PROFESSION / OCCUPATION" value={selectedPerson?.occupation} theme={theme} />
+                  <InfoItem label="LIEU DE TRAVAIL" value={selectedPerson?.placeofwork} theme={theme} />
                 </InfoGroup>
 
-                <InfoGroup title="Métadonnées d'Audit" icon="finger-print">
-                  <InfoItem label="NUI (MATRICULE)" value={selectedPerson?.nui} />
-                  <InfoItem label="FACEBOOK ID" value={selectedPerson?.facebookId} />
-                  <InfoItem label="DATE DE CRÉATION RECORD" value={selectedPerson?.creationdatetime} />
-                  <View style={styles.rawBox}>
+                <InfoGroup title="Métadonnées d'Audit" icon="finger-print" color={theme.tabActive}>
+                  <InfoItem label="NUI (MATRICULE)" value={selectedPerson?.nui} theme={theme} />
+                  <InfoItem label="FACEBOOK ID" value={selectedPerson?.facebookId} theme={theme} />
+                  <InfoItem label="DATE DE CRÉATION RECORD" value={selectedPerson?.creationdatetime} theme={theme} />
+                  <View style={[styles.rawBox, { backgroundColor: theme.isDark ? '#020617' : '#f1f5f9' }]}>
                     <Text style={styles.infoLabel}>RAW DATA (SOURCE)</Text>
                     <Text style={styles.rawText}>{selectedPerson?.raw || "Aucune donnée brute"}</Text>
                   </View>
                 </InfoGroup>
               </ScrollView>
 
-              <View style={styles.modalFooter}>
-                <TouchableOpacity style={styles.btnExport} onPress={() => handleExportJSON(selectedPerson)}>
+              <View style={[styles.modalFooter, { backgroundColor: theme.card }]}>
+                <TouchableOpacity style={[styles.btnExport, { backgroundColor: theme.tabActive }]} onPress={() => handleExportJSON(selectedPerson)}>
                   <Ionicons name="cloud-download-outline" size={20} color="white" />
                   <Text style={styles.btnExportText}>Générer Rapport (.JSON)</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.btnClose} onPress={() => setModalVisible(false)}>
-                  <Text style={styles.btnCloseText}>Fermer</Text>
+                <TouchableOpacity style={[styles.btnClose, { backgroundColor: theme.isDark ? '#334155' : '#e2e8f0' }]} onPress={() => setModalVisible(false)}>
+                  <Text style={[styles.btnCloseText, { color: theme.textMain }]}>Fermer</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -289,48 +291,48 @@ export default function SearchScreen() {
   );
 }
 
-const InfoGroup = ({ title, icon, children }) => (
+const InfoGroup = ({ title, icon, color, children }) => (
   <View style={styles.infoSection}>
-    <Text style={styles.sectionTitle}><Ionicons name={icon} /> {title}</Text>
+    <Text style={[styles.sectionTitle, { color: color }]}><Ionicons name={icon} /> {title}</Text>
     {children}
   </View>
 );
 
-const InfoItem = ({ label, value, flex }) => (
-  <View style={[styles.infoBox, flex ? { flex, marginRight: 5 } : {}]}>
+const InfoItem = ({ label, value, flex, theme }) => (
+  <View style={[styles.infoBox, { backgroundColor: theme.bg }, flex ? { flex, marginRight: 5 } : {}]}>
     <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoVal} numberOfLines={2}>{value || "Non renseigné"}</Text>
+    <Text style={[styles.infoVal, { color: theme.textMain }]} numberOfLines={2}>{value || "Non renseigné"}</Text>
   </View>
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
+  container: { flex: 1 },
   safeArea: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingTop: Platform.OS === 'ios' ? 5 : 35, paddingBottom: 10 },
   miniLogo: { width: 42, height: 42, borderRadius: 21 },
   headerTextContainer: { marginLeft: 12, flex: 1 },
-  headerTitle: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  headerTitle: { fontSize: 16, fontWeight: 'bold' },
   headerSub: { color: '#10b981', fontSize: 11, fontWeight: '600' },
   resetIcon: { padding: 5 },
   filterBar: { flexDirection: 'row', paddingHorizontal: 15, marginTop: 10, gap: 10 },
-  pickerBox: { flex: 1, backgroundColor: '#1e293b', borderRadius: 8, height: 45, justifyContent: 'center', borderWidth: 1, borderColor: '#334155' },
-  picker: { color: '#f8fafc' },
+  pickerBox: { flex: 1, borderRadius: 8, height: 45, justifyContent: 'center', borderWidth: 1 },
+  picker: { width: '100%' },
   countContainer: { paddingHorizontal: 15, marginTop: 10 },
-  countText: { color: '#94a3b8', fontSize: 11 },
+  countText: { fontSize: 11 },
   countHighlight: { color: '#10b981', fontWeight: 'bold' },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#334155', marginTop: 10, padding: 10, marginHorizontal: 10, borderRadius: 5 },
-  thText: { color: '#cbd5e1', fontSize: 10, fontWeight: 'bold' },
-  resultCard: { flexDirection: 'row', backgroundColor: '#1e293b', marginHorizontal: 10, paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: '#334155' },
+  tableHeader: { flexDirection: 'row', marginTop: 10, padding: 10, marginHorizontal: 10, borderRadius: 5 },
+  thText: { fontSize: 10, fontWeight: 'bold' },
+  resultCard: { flexDirection: 'row', marginHorizontal: 10, paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1 },
   column: { justifyContent: 'center' },
-  mainValue: { color: 'white', fontSize: 12, fontWeight: 'bold' },
+  mainValue: { fontSize: 12, fontWeight: 'bold' },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  subValue: { color: '#94a3b8', fontSize: 10 },
+  subValue: { fontSize: 10 },
   labelTitle: { color: '#64748b', fontSize: 8, fontWeight: 'bold' },
-  labelValue: { color: '#cbd5e1', fontSize: 10 },
+  labelValue: { fontSize: 10 },
   phoneValue: { color: '#10b981', fontSize: 10, fontWeight: 'bold' },
-  countryText: { color: 'white', fontSize: 11, fontWeight: 'bold' },
+  countryText: { fontSize: 11, fontWeight: 'bold' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  modalContainer: { backgroundColor: '#1e293b', borderTopLeftRadius: 25, borderTopRightRadius: 25, height: height * 0.88, width: width, overflow: 'hidden' },
+  modalContainer: { borderTopLeftRadius: 25, borderTopRightRadius: 25, height: height * 0.88, width: width, overflow: 'hidden' },
   modalHeader: { padding: 20, flexDirection: 'row', alignItems: 'center' },
   avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
@@ -338,16 +340,16 @@ const styles = StyleSheet.create({
   modalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
   modalBody: { padding: 20 },
   infoSection: { marginBottom: 20 },
-  sectionTitle: { color: '#3b82f6', fontSize: 11, fontWeight: 'bold', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  sectionTitle: { fontSize: 11, fontWeight: 'bold', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
   infoRow: { flexDirection: 'row', marginBottom: 8 },
-  infoBox: { backgroundColor: '#0f172a', padding: 12, borderRadius: 10, marginBottom: 8, flex: 1 },
+  infoBox: { padding: 12, borderRadius: 10, marginBottom: 8, flex: 1 },
   infoLabel: { color: '#4b5563', fontSize: 8, fontWeight: 'bold', marginBottom: 4 },
-  infoVal: { color: '#cbd5e1', fontSize: 13, fontWeight: '500' },
-  rawBox: { backgroundColor: '#020617', padding: 15, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: '#ef4444' },
+  infoVal: { fontSize: 13, fontWeight: '500' },
+  rawBox: { padding: 15, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: '#ef4444' },
   rawText: { color: '#ef4444', fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
-  modalFooter: { padding: 20, flexDirection: 'row', gap: 10, backgroundColor: '#1e293b' },
-  btnExport: { flex: 2, backgroundColor: '#10b981', borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', height: 50 },
+  modalFooter: { padding: 20, flexDirection: 'row', gap: 10 },
+  btnExport: { flex: 2, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', height: 50 },
   btnExportText: { color: 'white', fontWeight: 'bold', marginLeft: 8 },
-  btnClose: { flex: 1, backgroundColor: '#334155', borderRadius: 12, justifyContent: 'center', alignItems: 'center', height: 50 },
-  btnCloseText: { color: 'white', fontWeight: 'bold' }
+  btnClose: { flex: 1, borderRadius: 12, justifyContent: 'center', alignItems: 'center', height: 50 },
+  btnCloseText: { fontWeight: 'bold' }
 });
