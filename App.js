@@ -24,8 +24,7 @@ function Placeholder({ name }) {
   );
 }
 
-// Sous-composant de navigation pour consommer le thème global
-function NavigationApp({ agent, handleReset }) {
+function NavigationApp({ agent, handleLogOutGlobal }) {
   const { theme } = useTheme();
 
   return (
@@ -63,11 +62,14 @@ function NavigationApp({ agent, handleReset }) {
         <Tab.Screen name="Analyse" children={() => <Placeholder name="Statistiques" />} />
         <Tab.Screen name="Sources" children={() => <Placeholder name="Sources de données" />} />
         <Tab.Screen name="Rapports" children={() => <Placeholder name="Rapports d'audit" />} />
+        
+        {/* CORRECTION : Plus de fonction onLogout ici pour éviter le warning non-serializable */}
         <Tab.Screen 
           name="Paramètres" 
-          component={SettingsScreen}
           initialParams={{ agent: agent }}
-        />
+        >
+          {props => <SettingsScreen {...props} onLogout={handleLogOutGlobal} />}
+        </Tab.Screen>
       </Tab.Navigator>
     </NavigationContainer>
   );
@@ -82,13 +84,19 @@ export default function App() {
     setToken(userToken);
   };
 
+  // Déclaration explicite de la fonction pour éviter le ReferenceError
+  const handleLogOutGlobal = () => {
+    setAgent(null);
+    setToken(null);
+  };
+
   if (!agent) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
     <ThemeProvider>
-      <NavigationApp agent={agent} />
+      <NavigationApp agent={agent} handleLogOutGlobal={handleLogOutGlobal} />
     </ThemeProvider>
   );
 }
