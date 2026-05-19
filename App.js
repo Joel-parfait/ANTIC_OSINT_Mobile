@@ -63,28 +63,24 @@ function NavigationApp({ agent, handleLogOutGlobal }) {
         <Tab.Screen name="Sources" children={() => <Placeholder name="Sources de données" />} />
         <Tab.Screen name="Rapports" children={() => <Placeholder name="Rapports d'audit" />} />
         
-        {/* CORRECTION : Plus de fonction onLogout ici pour éviter le warning non-serializable */}
+        {/* RECONNEXION PROPRE SANS INTERFÉRENCE AVEC L'HISTORIQUE DE NAVIGATION */}
         <Tab.Screen 
-          name="Paramètres" 
+          name="Paramètres"
+          component={SettingsScreen}
           initialParams={{ agent: agent }}
-        >
-          {props => <SettingsScreen {...props} onLogout={handleLogOutGlobal} />}
-        </Tab.Screen>
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
 }
 
-export default function App() {
-  const [agent, setAgent] = useState(null);
-  const [token, setToken] = useState(null);
-
+// COMPOSANT INTERNE POUR LE FLUX D'AUTHENTIFICATION
+function AppContent({ agent, setAgent, setToken }) {
   const handleLoginSuccess = (userData, userToken) => {
     setAgent(userData);
     setToken(userToken);
   };
 
-  // Déclaration explicite de la fonction pour éviter le ReferenceError
   const handleLogOutGlobal = () => {
     setAgent(null);
     setToken(null);
@@ -94,9 +90,20 @@ export default function App() {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
+  return <NavigationApp agent={agent} handleLogOutGlobal={handleLogOutGlobal} />;
+}
+
+export default function App() {
+  const [agent, setAgent] = useState(null);
+  const [token, setToken] = useState(null);
+
   return (
     <ThemeProvider>
-      <NavigationApp agent={agent} handleLogOutGlobal={handleLogOutGlobal} />
+      <AppContent 
+        agent={agent} 
+        setAgent={setAgent} 
+        setToken={setToken} 
+      />
     </ThemeProvider>
   );
 }

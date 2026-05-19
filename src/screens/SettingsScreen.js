@@ -3,23 +3,25 @@ import {
   StyleSheet, View, Text, SafeAreaView, StatusBar, TouchableOpacity, Switch, ScrollView, Alert, Modal, TextInput, ActivityIndicator 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext'; // Import du hook de thème
+import { useTheme } from '../context/ThemeContext';
 
-export default function SettingsScreen({ route, navigation, onLogout }) {
+export default function SettingsScreen({ route, navigation }) {
   const initialAgent = route?.params?.agent || { name: "Agent CIRT", email: "cirt@antic.cm" };
+  const onLogout = route?.params?.onLogout; 
+
   const [agent, setAgent] = useState(initialAgent);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   
-  // ÉTATS DES NOUVELLES FONCTIONNALITÉS
   const [cacheLoading, setCacheLoading] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [newName, setNewName] = useState(agent.name);
   const [newEmail, setNewEmail] = useState(agent.email);
 
-  // ON RECUPERE LE THEME GLOBAL ET LA FONCTION POUR CHANGER
-  const { theme, toggleTheme } = useTheme();
+  // RÉCUPÉRATION DU CONTEXTE GLOBAL SÉCURISÉ (ZÉRO TYP_ERROR MAINTENANT)
+  const { 
+    theme, toggleTheme, is2FAEnabled, setIs2FAEnabled, isBiometricEnabled, setIsBiometricEnabled 
+  } = useTheme();
 
-  // 1. LOGIQUE DE SUPPRESSION DU CACHE OSINT
   const handleClearCache = () => {
     Alert.alert(
       "Purge du Cache",
@@ -31,7 +33,6 @@ export default function SettingsScreen({ route, navigation, onLogout }) {
           style: "destructive",
           onPress: () => {
             setCacheLoading(true);
-            // Simulation du nettoyage de la mémoire locale de l'application
             setTimeout(() => {
               setCacheLoading(false);
               Alert.alert("Succès", "Le cache système a été vidé avec succès.");
@@ -42,7 +43,6 @@ export default function SettingsScreen({ route, navigation, onLogout }) {
     );
   };
 
-  // 2. LOGIQUE DE MODIFICATION DES IDENTIFIANTS
   const handleUpdateIdentifiers = () => {
     if (!newName.trim() || !newEmail.trim()) {
       Alert.alert("Erreur", "Les champs ne peuvent pas être vides.");
@@ -53,7 +53,6 @@ export default function SettingsScreen({ route, navigation, onLogout }) {
     Alert.alert("Succès", "Identifiants mis à jour sur ce terminal.");
   };
 
-  // 3. LOGIQUE DE FERMETURE DE SESSION SÉCURISÉE (CORRIGÉE)
   const handleLogout = () => {
     Alert.alert(
       "Fermeture de session",
@@ -64,12 +63,8 @@ export default function SettingsScreen({ route, navigation, onLogout }) {
           text: "Déconnexion", 
           style: "destructive",
           onPress: () => {
-            // Utilisation directe de la fonction passée par les props
-            if (onLogout) {
-              onLogout();
-            } else {
-              Alert.alert("Session fermée", "Veuillez relancer l'application pour vous réauthentifier.");
-            }
+            if (onLogout) onLogout();
+            else Alert.alert("Session fermée", "Veuillez relancer l'application pour vous réauthentifier.");
           }
         }
       ]
@@ -103,41 +98,54 @@ export default function SettingsScreen({ route, navigation, onLogout }) {
                 <Text style={styles.agentEmail} numberOfLines={1}>{agent.email}</Text>
               </View>
             </View>
-            
-            {/* BOUTON MODIFIER IDENTIFIANTS */}
-            <TouchableOpacity 
-              style={[styles.innerActionBtn, { borderTopColor: theme.border }]}
-              onPress={() => {
-                setNewName(agent.name);
-                setNewEmail(agent.email);
-                setEditModalVisible(true);
-              }}
-            >
+            <TouchableOpacity style={[styles.innerActionBtn, { borderTopColor: theme.border }]} onPress={() => { setNewName(agent.name); setNewEmail(agent.email); setEditModalVisible(true); }}>
               <Ionicons name="create-outline" size={18} color={theme.tabActive} />
               <Text style={[styles.innerActionText, { color: theme.textMain }]}>Modifier mes identifiants</Text>
             </TouchableOpacity>
           </View>
 
-          {/* SECTION UNIQUE INTERRUPTEUR THEME */}
+          {/* SECTION CONTROLE DE SECURITE CRITIQUES */}
+          <Text style={[styles.sectionTitle, { color: theme.tabActive }]}>SÉCURITÉ DU TERMINAL (4.1)</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            
+            {/* SWITCH DOUBLE FACTEUR */}
+            <View style={[styles.settingRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+              <View style={styles.settingLabelContainer}>
+                <Ionicons name="key-outline" size={20} color="#10b981" />
+                <Text style={[styles.settingText, { color: theme.textMain }]} numberOfLines={1}>Double authentification (2FA)</Text>
+              </View>
+              <Switch
+                trackColor={{ false: '#cbd5e1', true: '#059669' }}
+                thumbColor={is2FAEnabled ? '#10b981' : '#f4f3f4'}
+                onValueChange={(val) => setIs2FAEnabled(val)}
+                value={is2FAEnabled}
+              />
+            </View>
+
+            {/* SWITCH BIOMÉTRIE (RENDU SÉCURISÉ POUR ÉVITER TOUT DÉBORDEMENT) */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Ionicons name="finger-print-outline" size={20} color="#3b82f6" />
+                <Text style={[styles.settingText, { color: theme.textMain }]} numberOfLines={1}>Authentification biométrique</Text>
+              </View>
+              <Switch
+                trackColor={{ false: '#cbd5e1', true: '#2563eb' }}
+                thumbColor={isBiometricEnabled ? '#3b82f6' : '#f4f3f4'}
+                onValueChange={(val) => setIsBiometricEnabled(val)}
+                value={isBiometricEnabled}
+              />
+            </View>
+          </View>
+
+          {/* SECTION INTERFACE VISUELLE */}
           <Text style={[styles.sectionTitle, { color: theme.tabActive }]}>INTERFACE VISUELLE</Text>
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLabelContainer}>
-                <Ionicons 
-                  name={theme.isDark ? "moon" : "sunny"} 
-                  size={20} 
-                  color={theme.isDark ? '#10b981' : '#3b82f6'} 
-                />
-                <Text style={[styles.settingText, { color: theme.textMain }]}>
-                  {theme.isDark ? "Mode Sombre Activé" : "Mode Clair Activé"}
-                </Text>
+                <Ionicons name={theme.isDark ? "moon" : "sunny"} size={20} color={theme.isDark ? '#10b981' : '#3b82f6'} />
+                <Text style={[styles.settingText, { color: theme.textMain }]} numberOfLines={1}>{theme.isDark ? "Mode Sombre Activé" : "Mode Clair Activé"}</Text>
               </View>
-              <Switch
-                trackColor={{ false: '#cbd5e1', true: '#059669' }}
-                thumbColor={theme.isDark ? '#10b981' : '#f4f3f4'}
-                onValueChange={toggleTheme} // APPEL DE LA FONCTION GLOBALE
-                value={theme.isDark}
-              />
+              <Switch trackColor={{ false: '#cbd5e1', true: '#059669' }} thumbColor={theme.isDark ? '#10b981' : '#f4f3f4'} onValueChange={toggleTheme} value={theme.isDark} />
             </View>
           </View>
 
@@ -147,35 +155,19 @@ export default function SettingsScreen({ route, navigation, onLogout }) {
             <View style={[styles.settingRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
               <View style={styles.settingLabelContainer}>
                 <Ionicons name="notifications-outline" size={20} color="#f59e0b" />
-                <Text style={[styles.settingText, { color: theme.textMain }]}>Notifications de fuites</Text>
+                <Text style={[styles.settingText, { color: theme.textMain }]} numberOfLines={1}>Notifications de fuites</Text>
               </View>
-              <Switch
-                trackColor={{ false: '#767577', true: '#d97706' }}
-                thumbColor={notificationsEnabled ? '#f59e0b' : '#f4f3f4'}
-                onValueChange={setNotificationsEnabled}
-                value={notificationsEnabled}
-              />
+              <Switch trackColor={{ false: '#767577', true: '#d97706' }} thumbColor={notificationsEnabled ? '#f59e0b' : '#f4f3f4'} onValueChange={setNotificationsEnabled} value={notificationsEnabled} />
             </View>
-
-            {/* BOUTON SUPPRIMER LE CACHE */}
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={handleClearCache}
-              disabled={cacheLoading}
-            >
+            <TouchableOpacity style={styles.settingRow} onPress={handleClearCache} disabled={cacheLoading}>
               <View style={styles.settingLabelContainer}>
                 <Ionicons name="trash-bin-outline" size={20} color="#ef4444" />
-                <Text style={[styles.settingText, { color: theme.textMain }]}>Supprimer le cache local</Text>
+                <Text style={[styles.settingText, { color: theme.textMain }]} numberOfLines={1}>Supprimer le cache local</Text>
               </View>
-              {cacheLoading ? (
-                <ActivityIndicator color="#ef4444" size="small" />
-              ) : (
-                <Ionicons name="chevron-forward" size={16} color={theme.textSub} />
-              )}
+              {cacheLoading ? <ActivityIndicator color="#ef4444" size="small" /> : <Ionicons name="chevron-forward" size={16} color={theme.textSub} />}
             </TouchableOpacity>
           </View>
 
-          {/* FERMETURE DE SESSION */}
           <TouchableOpacity style={styles.btnLogout} activeOpacity={0.8} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color="white" />
             <Text style={styles.btnLogoutText}>Fermer la session de l'agent</Text>
@@ -184,48 +176,18 @@ export default function SettingsScreen({ route, navigation, onLogout }) {
         </ScrollView>
       </SafeAreaView>
 
-      {/* MODAL RESPONSIVE : MODIFICATION DES IDENTIFIANTS */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={editModalVisible}
-        onRequestClose={() => setEditModalVisible(false)}
-      >
+      {/* MODAL RESPONSIVE */}
+      <Modal animationType="fade" transparent={true} visible={editModalVisible} onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Text style={[styles.modalTitleText, { color: theme.textMain }]}>Mise à jour l'identifiant</Text>
-            
             <Text style={[styles.inputLabel, { color: theme.textSub }]}>NOM DE L'AGENT</Text>
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: theme.bg, color: theme.textMain, borderColor: theme.border }]}
-              value={newName}
-              onChangeText={setNewName}
-              autoCorrect={false}
-            />
-
+            <TextInput style={[styles.modalInput, { backgroundColor: theme.bg, color: theme.textMain, borderColor: theme.border }]} value={newName} onChangeText={setNewName} autoCorrect={false} />
             <Text style={[styles.inputLabel, { color: theme.textSub }]}>ADRESSE EMAIL PROFESSIONNELLE</Text>
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: theme.bg, color: theme.textMain, borderColor: theme.border }]}
-              value={newEmail}
-              onChangeText={setNewEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
+            <TextInput style={[styles.modalInput, { backgroundColor: theme.bg, color: theme.textMain, borderColor: theme.border }]} value={newEmail} onChangeText={setNewEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
             <View style={styles.modalButtonRow}>
-              <TouchableOpacity 
-                style={[styles.modalBtn, { backgroundColor: theme.isDark ? '#334155' : '#e2e8f0' }]}
-                onPress={() => setEditModalVisible(false)}
-              >
-                <Text style={[styles.modalBtnText, { color: theme.textMain }]}>Annuler</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalBtn, { backgroundColor: theme.tabActive }]}
-                onPress={handleUpdateIdentifiers}
-              >
-                <Text style={[styles.modalBtnText, { color: 'white' }]}>Enregistrer</Text>
-              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.isDark ? '#334155' : '#e2e8f0' }]} onPress={() => setEditModalVisible(false)}><Text style={[styles.modalBtnText, { color: theme.textMain }]}>Annuler</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.tabActive }]} onPress={handleUpdateIdentifiers}><Text style={[styles.modalBtnText, { color: 'white' }]}>Enregistrer</Text></TouchableOpacity>
             </View>
           </View>
         </View>
@@ -253,13 +215,11 @@ const styles = StyleSheet.create({
   agentEmail: { color: '#10b981', fontSize: 11, fontWeight: '600', marginTop: 4 },
   innerActionBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, gap: 8 },
   innerActionText: { fontSize: 13, fontWeight: '500' },
-  settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 },
-  settingLabelContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  settingText: { fontSize: 14, fontWeight: '500' },
+  settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, width: '100%' },
+  settingLabelContainer: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 10 },
+  settingText: { fontSize: 14, fontWeight: '500', flex: 1 },
   btnLogout: { backgroundColor: '#ef4444', height: 48, borderRadius: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 35 },
   btnLogoutText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-  
-  // MODAL STYLES
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContainer: { width: '100%', borderRadius: 16, borderWidth: 1, padding: 20, elevation: 10 },
   modalTitleText: { fontSize: 18, fontWeight: 'bold', marginBottom: 20 },
