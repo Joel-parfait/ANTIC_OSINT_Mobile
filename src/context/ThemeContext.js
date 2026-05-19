@@ -30,12 +30,12 @@ export const themes = {
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(themes.dark);
-  
-  // ÉTATS GLOBAUX DE SÉCURITÉ
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  
+  // Référence interne pour déclencher la déconnexion globale depuis n'importe quel écran
+  const [logoutHandler, setLogoutHandler] = useState(null);
 
-  // 1. CHARGEMENT INITIAL DES PRÉFÉRENCES SÉCURISÉES AU BOOT
   useEffect(() => {
     const loadSecurePreferences = async () => {
       try {
@@ -45,13 +45,12 @@ export function ThemeProvider({ children }) {
         if (stored2FA !== null) setIs2FAEnabled(stored2FA === 'true');
         if (storedBio !== null) setIsBiometricEnabled(storedBio === 'true');
       } catch (error) {
-        console.error("Erreur lors du chargement des préférences matérielles :", error);
+        console.error("Erreur d'initialisation matérielle :", error);
       }
     };
     loadSecurePreferences();
   }, []);
 
-  // 2. FONCTIONS DE MODIFICATION AVEC PERSISTANCE MATÉRIELLE CRYPTÉE
   const update2FAState = async (value) => {
     setIs2FAEnabled(value);
     await SecureStore.setItemAsync('is2FAEnabled', value ? 'true' : 'false');
@@ -66,14 +65,23 @@ export function ThemeProvider({ children }) {
     setTheme(prev => prev.isDark ? themes.light : themes.dark);
   };
 
+  // Déclencheur global appelé par SettingsScreen
+  const executeGlobalLogout = () => {
+    if (logoutHandler) {
+      logoutHandler();
+    }
+  };
+
   return (
     <ThemeContext.Provider value={{ 
       theme, 
       toggleTheme, 
       is2FAEnabled, 
-      setIs2FAEnabled: update2FAState, // Redéfinition sur nos fonctions synchronisées
+      setIs2FAEnabled: update2FAState, 
       isBiometricEnabled, 
-      setIsBiometricEnabled: updateBiometricState
+      setIsBiometricEnabled: updateBiometricState,
+      registerLogoutHandler: setLogoutHandler,
+      logoutAgentGlobal: executeGlobalLogout
     }}>
       {children}
     </ThemeContext.Provider>

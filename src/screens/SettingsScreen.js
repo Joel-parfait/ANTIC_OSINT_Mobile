@@ -3,11 +3,11 @@ import {
   StyleSheet, View, Text, SafeAreaView, StatusBar, TouchableOpacity, Switch, ScrollView, Alert, Modal, TextInput, ActivityIndicator 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store'; // Pour sauvegarder le code de sécurité localement
 import { useTheme } from '../context/ThemeContext';
 
 export default function SettingsScreen({ route, navigation }) {
   const initialAgent = route?.params?.agent || { name: "Agent CIRT", email: "cirt@antic.cm" };
-  const onLogout = route?.params?.onLogout; 
 
   const [agent, setAgent] = useState(initialAgent);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -17,10 +17,67 @@ export default function SettingsScreen({ route, navigation }) {
   const [newName, setNewName] = useState(agent.name);
   const [newEmail, setNewEmail] = useState(agent.email);
 
-  // RÉCUPÉRATION DU CONTEXTE GLOBAL SÉCURISÉ (ZÉRO TYP_ERROR MAINTENANT)
+  // ÉTATS DE CONFIGURATION DU CODE PIN DE SÉCURITÉ LOCAL
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinMode, setPinMode] = useState('CREATE'); // 'CREATE' | 'DISABLE'
+  const [inputPin, setInputPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+
+  // RÉCUPÉRATION DU CONTEXTE GLOBAL SÉCURISÉ (AVEC L'ACTION DE DÉCONNEXION PROPRE)
   const { 
-    theme, toggleTheme, is2FAEnabled, setIs2FAEnabled, isBiometricEnabled, setIsBiometricEnabled 
+    theme, toggleTheme, is2FAEnabled, setIs2FAEnabled, isBiometricEnabled, setIsBiometricEnabled, logoutAgentGlobal 
   } = useTheme();
+
+  // LOGIQUE D'INTERCEPTION DU SWITCH 2FA
+  const handle2FASwitchChange = async (newValue) => {
+    setInputPin('');
+    setConfirmPin('');
+    
+    if (newValue === true) {
+      setPinMode('CREATE');
+      setPinModalVisible(true);
+    } else {
+      setPinMode('DISABLE');
+      setPinModalVisible(true);
+    }
+  };
+
+  // VALIDATION DE LA CONFIGURATION DU CODE PIN
+  const handlePinSubmit = async () => {
+    if (inputPin.trim().length !== 6) {
+      Alert.alert("Erreur", "Le code de sécurité doit contenir exactement 6 chiffres.");
+      return;
+    }
+
+    if (pinMode === 'CREATE') {
+      if (inputPin !== confirmPin) {
+        Alert.alert("Erreur", "Les deux codes saisis ne sont pas identiques.");
+        return;
+      }
+      try {
+        await SecureStore.setItemAsync('secure_2fa_pin', inputPin);
+        await setIs2FAEnabled(true);
+        setPinModalVisible(false);
+        Alert.alert("Sécurité activée", "Votre double authentification par code PIN local est désormais opérationnelle.");
+      } catch (err) {
+        Alert.alert("Erreur", "Impossible d'accéder au stockage sécurisé de l'appareil.");
+      }
+    } else if (pinMode === 'DISABLE') {
+      try {
+        const storedPin = await SecureStore.getItemAsync('secure_2fa_pin');
+        if (inputPin === storedPin) {
+          await SecureStore.deleteItemAsync('secure_2fa_pin');
+          await setIs2FAEnabled(false);
+          setPinModalVisible(false);
+          Alert.alert("Sécurité désactivée", "Le double facteur local a été retiré de ce terminal.");
+        } else {
+          Alert.alert("Action refusée", "Code de sécurité incorrect. Désactivation annulée.");
+        }
+      } catch (err) {
+        Alert.alert("Erreur", "Vérification système impossible.");
+      }
+    }
+  };
 
   const handleClearCache = () => {
     Alert.alert(
@@ -53,6 +110,7 @@ export default function SettingsScreen({ route, navigation }) {
     Alert.alert("Succès", "Identifiants mis à jour sur ce terminal.");
   };
 
+  // LOGIQUE DE DECONNEXION ASSAINIE ET CONNECTÉE AU CONTEXTE GLOBAL
   const handleLogout = () => {
     Alert.alert(
       "Fermeture de session",
@@ -63,8 +121,10 @@ export default function SettingsScreen({ route, navigation }) {
           text: "Déconnexion", 
           style: "destructive",
           onPress: () => {
-            if (onLogout) onLogout();
-            else Alert.alert("Session fermée", "Veuillez relancer l'application pour vous réauthentifier.");
+            // Déclenchement instantané de la déconnexion globale via l'état natif
+            if (logoutAgentGlobal) {
+              logoutAgentGlobal();
+            }
           }
         }
       ]
@@ -117,12 +177,12 @@ export default function SettingsScreen({ route, navigation }) {
               <Switch
                 trackColor={{ false: '#cbd5e1', true: '#059669' }}
                 thumbColor={is2FAEnabled ? '#10b981' : '#f4f3f4'}
-                onValueChange={(val) => setIs2FAEnabled(val)}
+                onValueChange={handle2FASwitchChange}
                 value={is2FAEnabled}
               />
             </View>
 
-            {/* SWITCH BIOMÉTRIE (RENDU SÉCURISÉ POUR ÉVITER TOUT DÉBORDEMENT) */}
+            {/* SWITCH BIOMÉTRIE */}
             <View style={styles.settingRow}>
               <View style={styles.settingLabelContainer}>
                 <Ionicons name="finger-print-outline" size={20} color="#3b82f6" />
@@ -176,7 +236,7 @@ export default function SettingsScreen({ route, navigation }) {
         </ScrollView>
       </SafeAreaView>
 
-      {/* MODAL RESPONSIVE */}
+      {/* MODAL 1 : MODIFICATION IDENTIFIANTS */}
       <Modal animationType="fade" transparent={true} visible={editModalVisible} onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -188,6 +248,58 @@ export default function SettingsScreen({ route, navigation }) {
             <View style={styles.modalButtonRow}>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.isDark ? '#334155' : '#e2e8f0' }]} onPress={() => setEditModalVisible(false)}><Text style={[styles.modalBtnText, { color: theme.textMain }]}>Annuler</Text></TouchableOpacity>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.tabActive }]} onPress={handleUpdateIdentifiers}><Text style={[styles.modalBtnText, { color: 'white' }]}>Enregistrer</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL 2 : CONFIGURATION DU CODE DE SÉCURITÉ LOCAL (2FA MATÉRIEL) */}
+      <Modal animationType="fade" transparent={true} visible={pinModalVisible} onRequestClose={() => setPinModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.modalTitleText, { color: theme.textMain }]}>
+              {pinMode === 'CREATE' ? "Activer le Double Facteur" : "Désactiver la protection"}
+            </Text>
+            
+            <Text style={[styles.inputLabel, { color: theme.textSub }]}>
+              {pinMode === 'CREATE' ? "DÉFINIR UN CODE SECRET À 6 CHIFFRES" : "VEUILLEZ SAISIR VOTRE CODE ACTUEL"}
+            </Text>
+            <TextInput 
+              style={[styles.modalInput, { backgroundColor: theme.bg, color: theme.textMain, borderColor: theme.border, letterSpacing: 8, textAlign: 'center', fontSize: 18 }]} 
+              placeholder="******"
+              placeholderTextColor="#A0AEC0"
+              keyboardType="number-pad"
+              maxLength={6}
+              secureTextEntry={true}
+              value={inputPin}
+              onChangeText={setInputPin}
+            />
+
+            {pinMode === 'CREATE' && (
+              <>
+                <Text style={[styles.inputLabel, { color: theme.textSub }]}>CONFIRMER LE CODE SECRET</Text>
+                <TextInput 
+                  style={[styles.modalInput, { backgroundColor: theme.bg, color: theme.textMain, borderColor: theme.border, letterSpacing: 8, textAlign: 'center', fontSize: 18 }]} 
+                  placeholder="******"
+                  placeholderTextColor="#A0AEC0"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  secureTextEntry={true}
+                  value={confirmPin}
+                  onChangeText={setConfirmPin}
+                />
+              </>
+            )}
+
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.isDark ? '#334155' : '#e2e8f0' }]} onPress={() => setPinModalVisible(false)}>
+                <Text style={[styles.modalBtnText, { color: theme.textMain }]}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: pinMode === 'CREATE' ? theme.tabActive : '#ef4444' }]} onPress={handlePinSubmit}>
+                <Text style={[styles.modalBtnText, { color: 'white' }]}>
+                  {pinMode === 'CREATE' ? "Activer" : "Désactiver"}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +24,7 @@ function Placeholder({ name }) {
   );
 }
 
-function NavigationApp({ agent, handleLogOutGlobal }) {
+function NavigationApp({ agent }) {
   const { theme } = useTheme();
 
   return (
@@ -63,10 +63,10 @@ function NavigationApp({ agent, handleLogOutGlobal }) {
         <Tab.Screen name="Sources" children={() => <Placeholder name="Sources de données" />} />
         <Tab.Screen name="Rapports" children={() => <Placeholder name="Rapports d'audit" />} />
         
-        {/* RECONNEXION PROPRE SANS INTERFÉRENCE AVEC L'HISTORIQUE DE NAVIGATION */}
+        {/* COMPOSANT TOTALEMENT NETTOYÉ ET SÉRIALISABLE */}
         <Tab.Screen 
-          name="Paramètres"
-          component={SettingsScreen}
+          name="Paramètres" 
+          component={SettingsScreen} 
           initialParams={{ agent: agent }}
         />
       </Tab.Navigator>
@@ -76,6 +76,8 @@ function NavigationApp({ agent, handleLogOutGlobal }) {
 
 // COMPOSANT INTERNE POUR LE FLUX D'AUTHENTIFICATION
 function AppContent({ agent, setAgent, setToken }) {
+  const { registerLogoutHandler } = useTheme();
+
   const handleLoginSuccess = (userData, userToken) => {
     setAgent(userData);
     setToken(userToken);
@@ -86,11 +88,16 @@ function AppContent({ agent, setAgent, setToken }) {
     setToken(null);
   };
 
+  // Enregistrement de la déconnexion dans le Context au démarrage de l'état
+  useEffect(() => {
+    registerLogoutHandler(() => handleLogOutGlobal);
+  }, []);
+
   if (!agent) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
-  return <NavigationApp agent={agent} handleLogOutGlobal={handleLogOutGlobal} />;
+  return <NavigationApp agent={agent} />;
 }
 
 export default function App() {
