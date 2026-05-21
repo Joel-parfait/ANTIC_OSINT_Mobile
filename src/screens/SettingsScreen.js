@@ -1,32 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, View, Text, SafeAreaView, StatusBar, TouchableOpacity, Switch, ScrollView, Alert, Modal, TextInput, ActivityIndicator 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store'; // Pour sauvegarder le code de sécurité localement
+import * as SecureStore from 'expo-secure-store';
 import { useTheme } from '../context/ThemeContext';
 
 export default function SettingsScreen({ route, navigation }) {
-  const initialAgent = route?.params?.agent || { name: "Agent CIRT", email: "cirt@antic.cm" };
+  // RÉCUPÉRATION DU CONTEXTE GLOBAL SÉCURISÉ (AVEC PROFIL ET ACTIONS PERSISTANTES)
+  const { 
+    theme, toggleTheme, is2FAEnabled, setIs2FAEnabled, isBiometricEnabled, setIsBiometricEnabled, logoutAgentGlobal,
+    agentName, agentEmail, updateAgentProfile
+  } = useTheme();
 
-  const [agent, setAgent] = useState(initialAgent);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  
   const [cacheLoading, setCacheLoading] = useState(false);
+  
+  // ÉTATS DES MODALS
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [newName, setNewName] = useState(agent.name);
-  const [newEmail, setNewEmail] = useState(agent.email);
+  const [newName, setNewName] = useState(agentName);
+  const [newEmail, setNewEmail] = useState(agentEmail);
 
-  // ÉTATS DE CONFIGURATION DU CODE PIN DE SÉCURITÉ LOCAL
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinMode, setPinMode] = useState('CREATE'); // 'CREATE' | 'DISABLE'
   const [inputPin, setInputPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
 
-  // RÉCUPÉRATION DU CONTEXTE GLOBAL SÉCURISÉ (AVEC L'ACTION DE DÉCONNEXION PROPRE)
-  const { 
-    theme, toggleTheme, is2FAEnabled, setIs2FAEnabled, isBiometricEnabled, setIsBiometricEnabled, logoutAgentGlobal 
-  } = useTheme();
+  // Synchroniser les champs du formulaire à chaque ouverture de la modal profil
+  useEffect(() => {
+    setNewName(agentName);
+    setNewEmail(agentEmail);
+  }, [agentName, agentEmail, editModalVisible]);
 
   // LOGIQUE D'INTERCEPTION DU SWITCH 2FA
   const handle2FASwitchChange = async (newValue) => {
@@ -100,17 +104,21 @@ export default function SettingsScreen({ route, navigation }) {
     );
   };
 
-  const handleUpdateIdentifiers = () => {
+  // MISE À JOUR DU PROFIL VIA LE CONTEXTE GLOBAL
+  const handleUpdateIdentifiers = async () => {
     if (!newName.trim() || !newEmail.trim()) {
       Alert.alert("Erreur", "Les champs ne peuvent pas être vides.");
       return;
     }
-    setAgent(prev => ({ ...prev, name: newName.trim(), email: newEmail.trim() }));
-    setEditModalVisible(false);
-    Alert.alert("Succès", "Identifiants mis à jour sur ce terminal.");
+    try {
+      await updateAgentProfile(newName.trim(), newEmail.trim());
+      setEditModalVisible(false);
+      Alert.alert("Succès", "Identifiants système sauvegardés de manière permanente.");
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible d'enregistrer les informations du profil.");
+    }
   };
 
-  // LOGIQUE DE DECONNEXION ASSAINIE ET CONNECTÉE AU CONTEXTE GLOBAL
   const handleLogout = () => {
     Alert.alert(
       "Fermeture de session",
@@ -121,7 +129,6 @@ export default function SettingsScreen({ route, navigation }) {
           text: "Déconnexion", 
           style: "destructive",
           onPress: () => {
-            // Déclenchement instantané de la déconnexion globale via l'état natif
             if (logoutAgentGlobal) {
               logoutAgentGlobal();
             }
@@ -143,22 +150,22 @@ export default function SettingsScreen({ route, navigation }) {
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
-          {/* SECTION PROFIL */}
+          {/* SECTION PROFIL SYNCHRONISÉE */}
           <Text style={[styles.sectionTitle, { color: theme.tabActive }]}>PROFIL SÉCURISÉ</Text>
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.profileRow}>
               <View style={[styles.avatarCircle, { backgroundColor: theme.tabActive }]}>
                 <Text style={styles.avatarText}>
-                  {agent.name ? agent.name.substring(0, 2).toUpperCase() : 'AG'}
+                  {agentName ? agentName.substring(0, 2).toUpperCase() : 'AG'}
                 </Text>
               </View>
               <View style={styles.profileInfo}>
-                <Text style={[styles.agentName, { color: theme.textMain }]}>{agent.name}</Text>
+                <Text style={[styles.agentName, { color: theme.textMain }]}>{agentName}</Text>
                 <Text style={[styles.agentRole, { color: theme.textSub }]}>Analyste - ANTIC</Text>
-                <Text style={styles.agentEmail} numberOfLines={1}>{agent.email}</Text>
+                <Text style={styles.agentEmail} numberOfLines={1}>{agentEmail}</Text>
               </View>
             </View>
-            <TouchableOpacity style={[styles.innerActionBtn, { borderTopColor: theme.border }]} onPress={() => { setNewName(agent.name); setNewEmail(agent.email); setEditModalVisible(true); }}>
+            <TouchableOpacity style={[styles.innerActionBtn, { borderTopColor: theme.border }]} onPress={() => setEditModalVisible(true)}>
               <Ionicons name="create-outline" size={18} color={theme.tabActive} />
               <Text style={[styles.innerActionText, { color: theme.textMain }]}>Modifier mes identifiants</Text>
             </TouchableOpacity>

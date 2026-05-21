@@ -33,7 +33,10 @@ export function ThemeProvider({ children }) {
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
   
-  // Référence interne pour déclencher la déconnexion globale depuis n'importe quel écran
+  // NOUVEAUX ÉTATS POUR CENTRALISER ET PERSISTER LE PROFIL MODIFIÉ
+  const [agentName, setAgentName] = useState("Agent CIRT");
+  const [agentEmail, setAgentEmail] = useState("cirt@antic.cm");
+
   const [logoutHandler, setLogoutHandler] = useState(null);
 
   useEffect(() => {
@@ -41,9 +44,13 @@ export function ThemeProvider({ children }) {
       try {
         const stored2FA = await SecureStore.getItemAsync('is2FAEnabled');
         const storedBio = await SecureStore.getItemAsync('isBiometricEnabled');
+        const storedName = await SecureStore.getItemAsync('agent_name');
+        const storedEmail = await SecureStore.getItemAsync('agent_email');
         
         if (stored2FA !== null) setIs2FAEnabled(stored2FA === 'true');
         if (storedBio !== null) setIsBiometricEnabled(storedBio === 'true');
+        if (storedName !== null) setAgentName(storedName);
+        if (storedEmail !== null) setAgentEmail(storedEmail);
       } catch (error) {
         console.error("Erreur d'initialisation matérielle :", error);
       }
@@ -61,15 +68,20 @@ export function ThemeProvider({ children }) {
     await SecureStore.setItemAsync('isBiometricEnabled', value ? 'true' : 'false');
   };
 
+  // FONCTION POUR METTRE À JOUR ET PERSISTER LE PROFIL DE L'AGENT
+  const updateAgentProfile = async (name, email) => {
+    setAgentName(name);
+    setAgentEmail(email);
+    await SecureStore.setItemAsync('agent_name', name);
+    await SecureStore.setItemAsync('agent_email', email);
+  };
+
   const toggleTheme = () => {
     setTheme(prev => prev.isDark ? themes.light : themes.dark);
   };
 
-  // Déclencheur global appelé par SettingsScreen
   const executeGlobalLogout = () => {
-    if (logoutHandler) {
-      logoutHandler();
-    }
+    if (logoutHandler) logoutHandler();
   };
 
   return (
@@ -80,6 +92,9 @@ export function ThemeProvider({ children }) {
       setIs2FAEnabled: update2FAState, 
       isBiometricEnabled, 
       setIsBiometricEnabled: updateBiometricState,
+      agentName,
+      agentEmail,
+      updateAgentProfile,
       registerLogoutHandler: setLogoutHandler,
       logoutAgentGlobal: executeGlobalLogout
     }}>

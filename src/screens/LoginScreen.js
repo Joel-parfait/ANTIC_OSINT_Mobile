@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { 
   StyleSheet, View, Text, TextInput, TouchableOpacity, 
   SafeAreaView, KeyboardAvoidingView, Platform, Image, 
-  ActivityIndicator, Alert, ScrollView, Keyboard
+  ActivityIndicator, Alert, ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store'; // AJOUT DE SECURE_STORE POUR LIRE LE VRAI PIN
 import { loginAgent } from '../api/authService';
-import { useTheme } from '../context/ThemeContext'; // Import pour lire la config
+import { useTheme } from '../context/ThemeContext';
 
 export default function LoginScreen({ onLoginSuccess }) {
-  const { is2FAEnabled, isBiometricEnabled } = useTheme(); // Lecture de la sécurité
+  const { is2FAEnabled, isBiometricEnabled } = useTheme();
 
-  const [loginStep, setLoginStep] = useState('CREDENTIALS'); // 'CREDENTIALS' | '2FA'
+  const [loginStep, setLoginStep] = useState('CREDENTIALS'); 
   const [savedUser, setSavedUser] = useState(null);
   const [savedToken, setSavedToken] = useState(null);
 
@@ -22,7 +23,6 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  // 1. PHASE IDENTIFIANTS
   const handleSignIn = async () => {
     if (!username || !password) {
       Alert.alert("Erreur", "Veuillez remplir tous les champs institutionnels.");
@@ -37,7 +37,6 @@ export default function LoginScreen({ onLoginSuccess }) {
       setSavedUser(result.user);
       setSavedToken(result.token);
 
-      // Point de connexion : si le 2FA est activé dans les paramètres
       if (is2FAEnabled) {
         setLoginStep('2FA');
       } else if (isBiometricEnabled) {
@@ -50,21 +49,31 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   };
 
-  // 2. PHASE 2FA (Uniquement si activé)
-  const handleVerify2FA = () => {
-    // Vrai code statique d'audit pour le CIRT au lieu de n'importe quoi
-    if (twoFactorCode === "000000") { 
-      if (isBiometricEnabled) {
-        triggerBiometricAuth(savedUser, savedToken);
+  // CORRECTION : VÉRIFICATION DYNAMIQUE DU VRAI PIN ENREGISTRÉ DANS LE STOCKAGE SÉCURISÉ
+  const handleVerify2FA = async () => {
+    if (twoFactorCode.trim().length !== 6) {
+      Alert.alert("Erreur", "Le code de sécurité doit contenir 6 chiffres.");
+      return;
+    }
+
+    try {
+      // Lecture du code PIN local défini par l'agent dans les paramètres
+      const storedPin = await SecureStore.getItemAsync('secure_2fa_pin');
+
+      if (twoFactorCode === storedPin) { 
+        if (isBiometricEnabled) {
+          triggerBiometricAuth(savedUser, savedToken);
+        } else {
+          onLoginSuccess(savedUser, savedToken);
+        }
       } else {
-        onLoginSuccess(savedUser, savedToken);
+        Alert.alert("Code Invalide", "Le code de vérification double facteur saisi est incorrect.");
       }
-    } else {
-      Alert.alert("Code Invalide", "Le code à 6 chiffres saisi est incorrect (Indice: 000000 pour le test).");
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de valider les éléments de sécurité du terminal.");
     }
   };
 
-  // 3. PHASE BIOMÉTRIE (Uniquement si activée)
   const triggerBiometricAuth = async (user, token) => {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
@@ -81,7 +90,6 @@ export default function LoginScreen({ onLoginSuccess }) {
         Alert.alert("Refusé", "Vérification biométrique échouée.");
       }
     } else {
-      // Fallback si pas de capteur physique configuré
       onLoginSuccess(user, token);
     }
   };
@@ -145,7 +153,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                 
                 <Text style={styles.label}>Code OTP de sécurité</Text>
                 <View style={styles.inputContainer}>
-                  <Ionicons name="key-outline" size={20} color="#10B981" style={styles.inputIcon} />
+                  <Ionicons name="key-outline" size={20} color="#10b981" style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input}
                     placeholder="Entrez le code à 6 chiffres"
