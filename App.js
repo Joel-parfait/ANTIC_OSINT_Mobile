@@ -46,7 +46,6 @@ function NavigationApp({ agent }) {
             let iconName;
             if (route.name === 'Dashboard') iconName = 'grid-outline';
             else if (route.name === 'Analyse') iconName = 'analytics-outline';
-            else if (route.name === 'Sources') iconName = 'server-outline';
             else if (route.name === 'Rapports') iconName = 'document-lock-outline';
             else if (route.name === 'Paramètres') iconName = 'shield-checkmark-outline';
             
@@ -60,7 +59,6 @@ function NavigationApp({ agent }) {
           initialParams={{ agent: agent }} 
         />
         <Tab.Screen name="Analyse" children={() => <Placeholder name="Statistiques" />} />
-        <Tab.Screen name="Sources" children={() => <Placeholder name="Sources de données" />} />
         <Tab.Screen name="Rapports" children={() => <Placeholder name="Rapports d'audit" />} />
         
         {/* COMPOSANT TOTALEMENT NETTOYÉ ET SÉRIALISABLE */}
